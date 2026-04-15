@@ -1,0 +1,34 @@
+openapi: 3.0.4
+info:
+  title: Росфоны — магазин российских смартфонов
+  description: |
+    REST API интернет-магазина "Росфоны", предоставляющее функционал:
+    - Каталог смартфонов с фильтрацией и пагинацией
+    - Управление корзиной покупок
+    - Оформление и отслеживание заказов
+    - Отзывы на смартфоны
+  version: 1.0.0
+  contact:
+    name: Поддержка Росфоны
+    email: support@rosphones.ru
+  license:
+    name: Proprietary
+
+tags:
+  - name: PhoneController
+    description: Каталог смартфонов
+  - name: CartController
+    description: Корзина покупателя
+  - name: OrderController
+    description: Управление заказами
+  - name: ReviewController
+    description: Отзывы на смартфоны
+
+paths: {}
+
+components:
+  schemas: {}
+
+servers:
+  - url: https://test-api.rosfony.ru/v1
+    description: Тестовый сервер
