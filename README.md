@@ -96,3 +96,4 @@
 servers:
   - url: https://test-api.rosfony.ru/v1
     description: Тестовый сервер
+```
