@@ -1,0 +1,583 @@
+openapi: 3.0.4
+info:
+  title: Росфоны — магазин российских смартфонов
+  description: |
+    REST API интернет-магазина "Росфоны", предоставляющее функционал:
+    - Каталог смартфонов с фильтрацией и пагинацией
+    - Управление корзиной покупок
+    - Оформление и отслеживание заказов
+    - Отзывы на смартфоны
+  version: 1.0.0
+  contact:
+    name: Поддержка Росфоны
+    email: support@rosphones.ru
+  license:
+    name: Proprietary
+
+tags:
+  - name: PhoneController
+    description: Каталог смартфонов
+  - name: CartController
+    description: Корзина покупателя
+  - name: OrderController
+    description: Управление заказами
+  - name: ReviewController
+    description: Отзывы на смартфоны
+
+paths:
+  /phones:
+    get:
+      summary: Получить список смартфонов с пагинацией и фильтрацией
+      tags:
+        - PhoneController
+      operationId: getAllPhones
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы (начиная с 0)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+            example: 0
+        - name: size
+          in: query
+          description: Количество товаров на странице
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 12
+            example: 12
+        - name: brand
+          in: query
+          description: Фильтр по бренду
+          required: false
+          schema:
+            type: string
+            enum:
+              - Росфон
+              - Редми
+              - Самсунг
+              - Эппл
+        - name: minPrice
+          in: query
+          description: Минимальная цена (₽)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            example: 10000
+        - name: maxPrice
+          in: query
+          description: Максимальная цена (₽)
+          required: false
+          schema:
+            type: integer
+            example: 50000
+        - name: ram
+          in: query
+          description: Объём оперативной памяти (ГБ)
+          required: false
+          schema:
+            type: integer
+            enum: [4, 6, 8, 12, 16]
+        - name: sort
+          in: query
+          description: Сортировка
+          required: false
+          schema:
+            type: string
+            enum:
+              - price_asc
+              - price_desc
+              - name_asc
+              - rating_desc
+            default: rating_desc
+      responses:
+        '200':
+          description: Страница смартфонов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    description: Список смартфонов на текущей странице
+                    items:
+                      $ref: '#/components/schemas/Phone'
+                  totalElements:
+                    type: integer
+                    description: Всего смартфонов в каталоге
+                    example: 156
+                  totalPages:
+                    type: integer
+                    description: Всего страниц
+                    example: 13
+                  currentPage:
+                    type: integer
+                    description: Текущая страница (0-based)
+                    example: 0
+                  pageSize:
+                    type: integer
+                    description: Размер страницы
+                    example: 12
+        '400':
+          description: Некорректные параметры фильтрации
+    post:
+      summary: Добавить новый смартфон (админка)
+      tags:
+        - PhoneController
+      operationId: createPhone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneCreate'
+      responses:
+        '201':
+          description: Смартфон добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Phone'
+        '400':
+          description: Ошибка валидации
+        '403':
+          description: Доступ только для администратора
+
+  '/phones/{id}':
+    get:
+      summary: Получить смартфон по ID
+      tags:
+        - PhoneController
+      operationId: getPhoneById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID смартфона
+          schema:
+            type: integer
+            example: 101
+      responses:
+        '200':
+          description: Смартфон найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDetails'
+        '404':
+          description: Смартфон не найден
+
+  /carts:
+    post:
+      summary: Создать новую корзину
+      tags:
+        - CartController
+      operationId: createCart
+      responses:
+        '201':
+          description: Корзина создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+
+  '/carts/{cartId}':
+    get:
+      summary: Получить корзину по ID
+      tags:
+        - CartController
+      operationId: getCartById
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: UUID корзины
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Корзина найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          description: Корзина не найдена
+
+  '/carts/{cartId}/items':
+    post:
+      summary: Добавить смартфон в корзину
+      tags:
+        - CartController
+      operationId: addItemToCart
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemAdd'
+      responses:
+        '200':
+          description: Товар добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          description: Недостаточно товара на складе
+        '404':
+          description: Смартфон не найден
+
+  '/carts/{cartId}/items/{phoneId}':
+    delete:
+      summary: Удалить смартфон из корзины
+      tags:
+        - CartController
+      operationId: removeItemFromCart
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: phoneId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Товар удалён
+        '404':
+          description: Товар или корзина не найдены
+
+  /orders:
+    get:
+      summary: Получить заказы пользователя с пагинацией
+      tags:
+        - OrderController
+      operationId: getUserOrders
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 30
+        - name: status
+          in: query
+          description: Фильтр по статусу заказа
+          required: false
+          schema:
+            type: string
+            enum:
+              - оформлен
+              - оплачен
+              - собран
+              - доставлен
+              - отменён
+      responses:
+        '200':
+          description: Страница заказов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  totalElements:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  currentPage:
+                    type: integer
+    post:
+      summary: Оформить заказ из корзины
+      tags:
+        - OrderController
+      operationId: createOrderFromCart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cartId:
+                  type: string
+                  description: ID корзины
+                deliveryAddress:
+                  type: string
+                  description: Адрес доставки
+                  example: "г. Москва, ул. Тверская, д. 5, кв. 12"
+                phoneNumber:
+                  type: string
+                  description: Телефон для связи
+                  pattern: '^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$'
+                  example: "+7 (900) 123-45-67"
+                promoCode:
+                  type: string
+                  description: Промокод (опционально)
+                  example: "ROSFFON2025"
+      responses:
+        '201':
+          description: Заказ создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  '/orders/{orderId}':
+    get:
+      summary: Получить детали заказа
+      tags:
+        - OrderController
+      operationId: getOrderById
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Заказ найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetails'
+        '404':
+          description: Заказ не найден
+
+components:
+  schemas:
+    Phone:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          example: 101
+        brand:
+          type: string
+          enum: [Росфон, Редми, Самсунг, Эппл]
+          example: "Росфон"
+        model:
+          type: string
+          example: "R5 Pro"
+        price:
+          type: integer
+          minimum: 1000
+          maximum: 200000
+          example: 34990
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+          readOnly: true
+          example: 4.7
+        imageUrl:
+          type: string
+          format: uri
+          example: "https://rosfony.ru/images/r5pro.jpg"
+
+    PhoneDetails:
+      allOf:
+        - $ref: '#/components/schemas/Phone'
+        - type: object
+          properties:
+            specifications:
+              type: object
+              properties:
+                ram:
+                  type: integer
+                  description: ОЗУ в ГБ
+                  example: 8
+                storage:
+                  type: integer
+                  description: Память в ГБ
+                  example: 256
+                camera:
+                  type: string
+                  example: "108 МП + 16 МП"
+                battery:
+                  type: integer
+                  description: Ёмкость аккумулятора (мАч)
+                  example: 5000
+                processor:
+                  type: string
+                  example: "Росфон Чип M1"
+                display:
+                  type: string
+                  description: Диагональ и тип экрана
+                  example: "6.7 дюймов, AMOLED, 120Hz"
+            inStock:
+              type: integer
+              description: Количество на складе
+              example: 45
+            colorOptions:
+              type: array
+              items:
+                type: string
+              example: ["Чёрный", "Белый", "Синий"]
+
+    PhoneCreate:
+      type: object
+      required:
+        - brand
+        - model
+        - price
+      properties:
+        brand:
+          type: string
+          enum: [Росфон, Редми, Самсунг, Эппл]
+        model:
+          type: string
+          minLength: 1
+          maxLength: 50
+        price:
+          type: integer
+          minimum: 1000
+          maximum: 200000
+        specifications:
+          type: object
+        stock:
+          type: integer
+          minimum: 0
+          default: 0
+
+    Cart:
+      type: object
+      properties:
+        cartId:
+          type: string
+          format: uuid
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        totalItems:
+          type: integer
+          readOnly: true
+          description: Общее количество товаров
+        totalPrice:
+          type: integer
+          readOnly: true
+          description: Общая сумма в рублях
+
+    CartItemAdd:
+      type: object
+      required:
+        - phoneId
+        - quantity
+      properties:
+        phoneId:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 99
+          default: 1
+
+    CartItem:
+      type: object
+      properties:
+        phoneId:
+          type: integer
+        model:
+          type: string
+        brand:
+          type: string
+        price:
+          type: integer
+        quantity:
+          type: integer
+        totalPrice:
+          type: integer
+
+    Order:
+      type: object
+      properties:
+        orderId:
+          type: integer
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        totalPrice:
+          type: integer
+          readOnly: true
+        status:
+          type: string
+          enum:
+            - оформлен
+            - оплачен
+            - собран
+            - доставлен
+            - отменён
+          readOnly: true
+        itemsCount:
+          type: integer
+          readOnly: true
+
+    OrderDetails:
+      allOf:
+        - $ref: '#/components/schemas/Order'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderItem'
+            deliveryAddress:
+              type: string
+            phoneNumber:
+              type: string
+            trackingNumber:
+              type: string
+              readOnly: true
+              description: Трек-номер СДЭК/Почта России
+
+    OrderItem:
+      type: object
+      properties:
+        phoneId:
+          type: integer
+        model:
+          type: string
+        brand:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: integer
+        totalPrice:
+          type: integer
+
+servers:
+  - url: https://test-api.rosfony.ru/v1
+    description: Тестовый сервер
