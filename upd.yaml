@@ -1,0 +1,459 @@
+openapi: 3.0.4
+info:
+  title: Росфоны — магазин российских смартфонов
+  description: |
+    REST API интернет-магазина "Росфоны", предоставляющее функционал:
+    - Каталог смартфонов с пагинацией
+    - Управление корзиной покупок
+    - Оформление и отслеживание заказов
+  version: 1.0.0
+  contact:
+    name: Поддержка Росфоны
+    email: support@rosphones.ru
+  license:
+    name: Proprietary
+
+tags:
+  - name: PhoneController
+    description: Каталог смартфонов
+  - name: CartController
+    description: Корзина покупателя
+  - name: OrderController
+    description: Управление заказами
+
+paths:
+  /phones:
+    get:
+      summary: Получить список смартфонов с пагинацией
+      tags:
+        - PhoneController
+      operationId: getAllPhones
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы (начиная с 0)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+            example: 0
+        - name: size
+          in: query
+          description: Количество товаров на странице
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 12
+            example: 12
+        - name: brand
+          in: query
+          description: Фильтр по бренду
+          required: false
+          schema:
+            type: string
+            enum:
+              - Росфон
+              - Редми
+              - Самсунг
+              - Эппл
+      responses:
+        '200':
+          description: Страница смартфонов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    description: Список смартфонов на текущей странице
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 101
+                        model:
+                          type: string
+                          example: "R5 Pro"
+                        price:
+                          type: integer
+                          example: 34990
+                  totalElements:
+                    type: integer
+                    example: 156
+                  totalPages:
+                    type: integer
+                    example: 13
+                  currentPage:
+                    type: integer
+                    example: 0
+                  pageSize:
+                    type: integer
+                    example: 12
+        '400':
+          description: Некорректные параметры фильтрации
+    post:
+      summary: Добавить новый смартфон (админка)
+      tags:
+        - PhoneController
+      operationId: createPhone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneCreate'
+      responses:
+        '201':
+          description: Смартфон добавлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 101
+                  model:
+                    type: string
+                    example: "R5 Pro"
+                  price:
+                    type: integer
+                    example: 34990
+        '400':
+          description: Ошибка валидации
+        '403':
+          description: Доступ только для администратора
+
+  '/phones/{id}':
+    get:
+      summary: Получить смартфон по ID
+      tags:
+        - PhoneController
+      operationId: getPhoneById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID смартфона
+          schema:
+            type: integer
+            example: 101
+      responses:
+        '200':
+          description: Смартфон найден
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 101
+                  model:
+                    type: string
+                    example: "R5 Pro"
+                  price:
+                    type: integer
+                    example: 34990
+        '404':
+          description: Смартфон не найден
+
+  /carts:
+    post:
+      summary: Создать новую корзину
+      tags:
+        - CartController
+      operationId: createCart
+      responses:
+        '201':
+          description: Корзина создана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cartId:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  totalItems:
+                    type: integer
+                    example: 0
+                  totalPrice:
+                    type: integer
+                    example: 0
+
+  '/carts/{cartId}':
+    get:
+      summary: Получить корзину по ID
+      tags:
+        - CartController
+      operationId: getCartById
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: UUID корзины
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Корзина найдена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cartId:
+                    type: string
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  totalItems:
+                    type: integer
+                    example: 3
+                  totalPrice:
+                    type: integer
+                    example: 104970
+        '404':
+          description: Корзина не найдена
+
+  '/carts/{cartId}/items':
+    post:
+      summary: Добавить смартфон в корзину
+      tags:
+        - CartController
+      operationId: addItemToCart
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phoneId
+                - quantity
+              properties:
+                phoneId:
+                  type: integer
+                  example: 101
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 99
+                  default: 1
+                  example: 2
+      responses:
+        '200':
+          description: Товар добавлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cartId:
+                    type: string
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  totalItems:
+                    type: integer
+                    example: 3
+                  totalPrice:
+                    type: integer
+                    example: 104970
+        '400':
+          description: Недостаточно товара на складе
+        '404':
+          description: Смартфон не найден
+
+  /orders:
+    get:
+      summary: Получить заказы пользователя с пагинацией
+      tags:
+        - OrderController
+      operationId: getUserOrders
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 30
+        - name: status
+          in: query
+          description: Фильтр по статусу заказа
+          required: false
+          schema:
+            type: string
+            enum:
+              - оформлен
+              - оплачен
+              - собран
+              - доставлен
+              - отменён
+      responses:
+        '200':
+          description: Страница заказов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        orderId:
+                          type: integer
+                          example: 1001
+                        totalPrice:
+                          type: integer
+                          example: 34990
+                        status:
+                          type: string
+                          example: "оформлен"
+                  totalElements:
+                    type: integer
+                    example: 25
+                  totalPages:
+                    type: integer
+                    example: 3
+                  currentPage:
+                    type: integer
+                    example: 0
+    post:
+      summary: Оформить заказ из корзины
+      tags:
+        - OrderController
+      operationId: createOrderFromCart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cartId
+                - deliveryAddress
+                - phoneNumber
+              properties:
+                cartId:
+                  type: string
+                  description: ID корзины
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                deliveryAddress:
+                  type: string
+                  description: Адрес доставки
+                  example: "г. Москва, ул. Тверская, д. 5, кв. 12"
+                phoneNumber:
+                  type: string
+                  description: Телефон для связи
+                  pattern: '^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$'
+                  example: "+7 (900) 123-45-67"
+                promoCode:
+                  type: string
+                  description: Промокод (опционально)
+                  example: "ROSFFON2025"
+      responses:
+        '201':
+          description: Заказ создан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orderId:
+                    type: integer
+                    example: 1001
+                  totalPrice:
+                    type: integer
+                    example: 34990
+                  status:
+                    type: string
+                    example: "оформлен"
+
+  '/orders/{orderId}':
+    get:
+      summary: Получить детали заказа
+      tags:
+        - OrderController
+      operationId: getOrderById
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1001
+      responses:
+        '200':
+          description: Заказ найден
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orderId:
+                    type: integer
+                    example: 1001
+                  totalPrice:
+                    type: integer
+                    example: 34990
+                  status:
+                    type: string
+                    example: "оформлен"
+        '404':
+          description: Заказ не найден
+
+components:
+  schemas:
+    PhoneCreate:
+      type: object
+      required:
+        - brand
+        - model
+        - price
+      properties:
+        brand:
+          type: string
+          enum: [Росфон, Редми, Самсунг, Эппл]
+          example: "Росфон"
+        model:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "R5 Pro"
+        price:
+          type: integer
+          minimum: 1000
+          maximum: 200000
+          example: 34990
+        specifications:
+          type: object
+          example:
+            ram: 8
+            storage: 256
+        stock:
+          type: integer
+          minimum: 0
+          default: 0
+          example: 100
+
+servers:
+  - url: https://test-api.rosfony.ru/v1
+    description: Тестовый сервер
